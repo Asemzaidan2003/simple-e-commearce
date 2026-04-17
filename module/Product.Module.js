@@ -42,8 +42,17 @@ const productSchema = mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Discount",
             default: null
-        }
-    });
-
+        },
+        store_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Store",
+            required: true
+        },
+    },{timestamps: true});
+// Indexes
+productSchema.index({ store_id: 1 });
+productSchema.index({ product_category: 1 });
+productSchema.index({ store_id: 1, product_name_en: 1 }, { unique: true });
+productSchema.index({ store_id: 1, product_name_ar: 1 }, { unique: true });
 const Product = mongoose.model("Product", productSchema);
 export default Product;

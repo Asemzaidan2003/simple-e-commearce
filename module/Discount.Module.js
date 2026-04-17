@@ -46,6 +46,15 @@ const discountSchema = mongoose.Schema({
     type: Number,
     default: 0,
   },
-});
+  discount_store_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Store",
+    required: true,
+  },
+}, { timestamps: true });
+// Indexes
+discountSchema.index({ discount_code: 1 });
+discountSchema.index({ discount_store_id: 1, discount_code: 1 }, { unique: true });
+
 const Discount = mongoose.model("Discount", discountSchema);
 export default Discount;

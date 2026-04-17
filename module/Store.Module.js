@@ -59,10 +59,9 @@ const storeSchema = mongoose.Schema(
         type: String,
         required: true,
         unique: true,
-        index: true
+        lowercase: true,
     }
-  }
-);
+  }, { timestamps: true });
 
 const Store = mongoose.model("Store", storeSchema);
 export default Store;
