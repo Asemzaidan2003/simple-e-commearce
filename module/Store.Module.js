@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-const categorySchema = mongoose.Schema(
+const storeSchema = mongoose.Schema(
   {
     store_name: {
         type: String,
@@ -54,6 +54,15 @@ const categorySchema = mongoose.Schema(
     store_subscription_expiry_date: {
         type: Date,
         required: true
+    },
+    store_domain: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
     }
   }
 );
+
+const Store = mongoose.model("Store", storeSchema);
+export default Store;

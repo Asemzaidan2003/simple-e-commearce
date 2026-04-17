@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-const categorySchema = mongoose.Schema(
+const productSchema = mongoose.Schema(
     {
         product_name_en:{
             type: String,
@@ -37,8 +37,13 @@ const categorySchema = mongoose.Schema(
         product_quantity_sold:{
             type: Number,
             default: 0
+        },
+        product_discount:{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Discount",
+            default: null
         }
     });
 
-const Product = mongoose.model("Product", categorySchema);
+const Product = mongoose.model("Product", productSchema);
 export default Product;

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-const categorySchema = mongoose.Schema({
+const userSchema = mongoose.Schema({
     user_name_en:{
         type: String,
         required: true
@@ -26,5 +26,5 @@ const categorySchema = mongoose.Schema({
 
 })
 
-const User = mongoose.model("User", categorySchema);
+const User = mongoose.model("User", userSchema);
 export default User;
