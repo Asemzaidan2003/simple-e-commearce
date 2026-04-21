@@ -70,7 +70,6 @@ const orderSchema = new mongoose.Schema(
       shipment_provider: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "ShipmentProvider",
-        enum: ["dhl", "fedex", "ups", "local_courier"],
       },
       shipment_method: {
         type: String,
