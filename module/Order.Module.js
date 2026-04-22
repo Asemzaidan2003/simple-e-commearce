@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const orderSchema = new mongoose.Schema(
   {
     user: {
@@ -30,26 +31,11 @@ const orderSchema = new mongoose.Schema(
     ],
 
     pricing: {
-      subtotal: {
-        type: Number,
-        required: true,
-      },
-      shipping_fee: {
-        type: Number,
-        default: 0,
-      },
-      discount_code: {
-        type: String,
-        default: null,
-      },
-      discount_amount: {
-        type: Number,
-        default: 0,
-      },
-      total: {
-        type: Number,
-        required: true,
-      },
+      subtotal:        { type: Number, required: true },
+      shipping_fee:    { type: Number, default: 0 },
+      discount_code:   { type: String, default: null },
+      discount_amount: { type: Number, default: 0 },
+      total:           { type: Number, required: true },
     },
 
     payment: {
@@ -66,7 +52,8 @@ const orderSchema = new mongoose.Schema(
       transaction_id: String,
       paid_at: Date,
     },
-    shipment:{
+
+    shipment: {
       shipment_provider: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "ShipmentProvider",
@@ -77,33 +64,25 @@ const orderSchema = new mongoose.Schema(
         required: true,
       },
       shipping_address: {
-        country: { type: mongoose.Schema.Types.ObjectId, ref: "Country" },
-        city: { type: mongoose.Schema.Types.ObjectId, ref: "City" },
+        country:        { type: mongoose.Schema.Types.ObjectId, ref: "Country" },
+        city:           { type: mongoose.Schema.Types.ObjectId, ref: "City" },
         street_address: String,
-        notes: String,
-      },
-    },
-    
-    analytics: {
-      total_cost: {
-        type: Number,
-        required: true,
-      },
-      total_items: {
-        type: Number,
-        required: true,
-      },
-      total_profit: {
-        type: Number,
-        required: true,
-      },
-      source: {
-        //This will be determined later
-        type: String,
-        enum: ["website", "instagram", "whatsapp", "third_party"],
+        notes:          String,
       },
     },
 
+    analytics: {
+      total_cost:   { type: Number, required: true },
+      total_items:  { type: Number, required: true },
+      total_profit: { type: Number, required: true },
+      source: {
+        type: String,
+        enum: ["website", "instagram", "whatsapp", "third_party"],
+        default: "website",
+      },
+    },
+
+    // FIX: status_history was incorrectly nested inside status field
     status: {
       type: String,
       enum: [
@@ -116,17 +95,16 @@ const orderSchema = new mongoose.Schema(
         "cancelled",
       ],
       default: "pending",
-      status_history: [
-        {
-          status: String,
-          at: Date,
-        },
-      ],
     },
 
-    cancelled_reason: {
-      type: String,
-    },
+    status_history: [
+      {
+        status: String,
+        at:     { type: Date, default: Date.now },
+      },
+    ],
+
+    cancelled_reason: { type: String },
   },
   { timestamps: true },
 );
@@ -135,5 +113,6 @@ orderSchema.index({ store_id: 1, createdAt: -1 });
 orderSchema.index({ user: 1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ "payment.status": 1 });
+
 const Order = mongoose.model("Order", orderSchema);
 export default Order;
