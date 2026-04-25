@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 const storeSchema = mongoose.Schema(
   {
+    user_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     store_name: {
         type: String,
         required: true
@@ -60,7 +65,15 @@ const storeSchema = mongoose.Schema(
         required: true,
         unique: true,
         lowercase: true,
-    }
+    },
+    created_by: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+    },
+    updated_by: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+    },
   }, { timestamps: true });
 
 const Store = mongoose.model("Store", storeSchema);

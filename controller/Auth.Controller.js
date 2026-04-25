@@ -2,6 +2,7 @@ import User from "../module/user.Module.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendWelcomeEmail } from "../utils/sendEmail.js";
+import {sendError , sendSuccess} from "../utils/responseHandler.js";
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 
@@ -25,40 +26,63 @@ const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
 
 // ── Controllers ───────────────────────────────────────────────────────────────
 
-export const register = async (req, res) => {
+export const registerUser = async (req, res) => {
   try {
-    const { user_name_en, user_email, user_password, user_phone_number, user_address } = req.body;
+    const {
+      user_name,
+      user_email,
+      user_password,
+      user_phone_number,
+      user_address,
+      user_country,
+      user_city,
+      user_role,
+      createdVia,
+      created_by,
+      updated_by,
+    } = req.body;
 
-    if (!user_name_en || !user_email || !user_password) {
-      return res.status(400).json({ success: false, message: "Name, email, and password are required" });
+    if (!user_name || !user_email || !user_password || !user_country || !user_city || !user_role || !createdVia) {
+      return sendError(res, 400, "Required fields are missing");
+      //return res.status(400).json({ success: false, message: "Name, email, and password are required" });
     }
 
-    if (user_password.length < 6) {
-      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+    if (user_password.length < 8) {
+      return sendError(res, 400, "Password must be at least 8 characters");
+      //return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
     }
 
     const existingUser = await User.findOne({ user_email: user_email.toLowerCase() });
     if (existingUser) {
-      return res.status(409).json({ success: false, message: "Email already registered" });
+      return sendError(res, 409, "User is already registered");
+      // return res.status(409).json({ success: false, message: "Email already registered" });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(user_password, salt);
-
+    if (createdVia === "admin" ) {
+      created_by = req.user.id; // Set created_by to the admin's user ID
+      updated_by = req.user.id; // Set updated_by to the admin's user ID
+    }
     // Generate tokens before saving so we can store the refresh token
     const userDoc = new User({
-      user_name_en,
+      user_name,
       user_email: user_email.toLowerCase(),
       user_password: hashedPassword,
-      user_role: "customer",
+      user_role,
       user_phone_number,
       user_address,
+      user_country,
+      user_city,
+      createdVia,
+      created_by,
+      updated_by,
     });
 
     const accessToken  = generateAccessToken(userDoc);
     const refreshToken = generateRefreshToken(userDoc);
 
-    userDoc.refresh_token            = refreshToken;
+    userDoc.refresh_token = refreshToken;
     userDoc.refresh_token_expires_at = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
 
     await userDoc.save();

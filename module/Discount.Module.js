@@ -51,6 +51,18 @@ const discountSchema = mongoose.Schema({
     ref: "Store",
     required: true,
   },
+  is_deleted: {
+    type: Boolean,
+    default: false,
+  },
+  creared_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+  updated_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
 }, { timestamps: true });
 // Indexes
 discountSchema.index({ discount_code: 1 });

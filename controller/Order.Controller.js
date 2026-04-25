@@ -1,6 +1,9 @@
 import Order from "../module/Order.Module.js";
 import Product from "../module/Product.Module.js";
 import Discount from "../module/Discount.Module.js";
+import { validateOrderItem } from "../utils/validateOrderItem.js";
+import { applyDiscountForOrder } from "../utils/applyDiscountForOrder.js";
+import { applyDiscountCodeForOrder } from "./Discount.Controller.js";
 
 export const createOrder = async (req, res) => {
   try {
@@ -10,6 +13,7 @@ export const createOrder = async (req, res) => {
       payment,
       shipment,
       discount_code,
+      user_id,
     } = req.body;
 
     if (!items || items.length === 0) {
@@ -21,15 +25,8 @@ export const createOrder = async (req, res) => {
     const enrichedItems = [];
 
     for (const item of items) {
-      const product = await Product.findById(item.product_id);
-      if (!product || product.is_deleted) {
-        return res.status(404).json({ message: `Product ${item.product_id} not found` });
-      }
-      if (product.product_quantity < item.quantity) {
-        return res.status(400).json({
-          message: `Insufficient stock for product "${product.product_name_en}". Available: ${product.product_quantity}`,
-        });
-      }
+      await validateOrderItem(item);
+      
       subtotal += product.product_price * item.quantity;
       enrichedItems.push({
         product_id: product._id,
@@ -43,36 +40,15 @@ export const createOrder = async (req, res) => {
     let discount_amount = 0;
     let appliedDiscountCode = null;
     if (discount_code) {
-      const discount = await Discount.findOne({
-        discount_code: discount_code.toUpperCase(),
-        discount_store_id: store_id,
-        discount_status: "active",
-      });
-
-      if (!discount) {
-        return res.status(400).json({ message: "Invalid or expired discount code" });
+      const validatedDiscount = applyDiscountForOrder(discount_code, store_id, subtotal);
+      //discount = {discount, savings }
+      if (!validatedDiscount) {
+        return res.status(400).json({ message: "Invalid discount code" });
       }
-      if (discount.discount_end_date && new Date() > discount.discount_end_date) {
-        return res.status(400).json({ message: "Discount code has expired" });
-      }
-      if (discount.discount_max_usage && discount.discount_used_count >= discount.discount_max_usage) {
-        return res.status(400).json({ message: "Discount code usage limit reached" });
-      }
-      if (subtotal < discount.discount_min_order) {
-        return res.status(400).json({
-          message: `Minimum order amount for this discount is ${discount.discount_min_order}`,
-        });
-      }
-
-      if (discount.discount_type === "percentage") {
-        discount_amount = (subtotal * discount.discount_percentage) / 100;
-      } else {
-        discount_amount = discount.discount_percentage; // fixed amount stored here
-      }
-
-      appliedDiscountCode = discount.discount_code;
-      discount.discount_used_count += 1;
-      await discount.save();
+      discount_amount = validatedDiscount.savings;
+      appliedDiscountCode = validatedDiscount.discount.discount_code;
+      validatedDiscount.discount.discount_used_count += 1;
+      await validatedDiscount.discount.save();
     }
 
     const shipping_fee = shipment?.shipping_fee || 0;

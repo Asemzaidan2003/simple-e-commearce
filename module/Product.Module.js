@@ -25,7 +25,14 @@ const productSchema = mongoose.Schema(
       ref: "Store",
       required: true,
     },
-    // Added: soft delete support (was missing)
+    created_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    updated_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     is_deleted: { type: Boolean, default: false },
   },
   { timestamps: true }

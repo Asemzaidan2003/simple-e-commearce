@@ -1,7 +1,7 @@
 import express from "express";
 import {
   createDiscount,
-  getAllDiscounts,
+  getAllDiscountsByStoreId,
   getDiscountById,
   validateDiscountCode,
   updateDiscount,
@@ -12,11 +12,11 @@ import { allowRoles } from "../middleware/role.middleware.js";
 
 const router = express.Router();
 
-router.post("/create",                        verifyToken, allowRoles("admin", "super_admin"), createDiscount);
-router.post("/validate",                      verifyToken, allowRoles("admin", "super_admin", "customer"), validateDiscountCode);
-router.get("/store/:store_id/all",            verifyToken, allowRoles("admin", "super_admin"), getAllDiscounts);
-router.get("/:id",                            verifyToken, allowRoles("admin", "super_admin"), getDiscountById);
-router.put("/:id",                            verifyToken, allowRoles("admin", "super_admin"), updateDiscount);
-router.delete("/:id",                         verifyToken, allowRoles("admin", "super_admin"), deleteDiscount);
+router.post("/create",verifyToken, allowRoles("admin", "super_admin","store"), createDiscount);
+router.post("/validate",verifyToken, validateDiscountCode);
+router.get("/store/:store_id/all",verifyToken, allowRoles("admin", "super_admin" ,"store"), getAllDiscountsByStoreId);
+router.get("/:id",verifyToken, getDiscountById);
+router.put("/:id",verifyToken, allowRoles("admin", "super_admin" , "store"), updateDiscount);
+router.put("/:id",verifyToken, allowRoles("admin", "super_admin"), deleteDiscount);
 
 export default router;

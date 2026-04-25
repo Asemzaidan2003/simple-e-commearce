@@ -1,6 +1,7 @@
 import User from "../module/user.Module.js";
 import bcrypt from "bcryptjs";
 
+
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-user_password").sort({ createdAt: -1 });
@@ -22,7 +23,7 @@ export const getUserById = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   try {
-    const { user_name_en, user_email, user_phone_number, user_address } = req.body;
+    const { user_name, user_email, user_phone_number, user_address } = req.body;
 
     // Non-admins can only update their own profile
     if (req.user.role !== "admin" && req.user.role !== "super_admin") {

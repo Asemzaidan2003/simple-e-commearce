@@ -105,6 +105,14 @@ const orderSchema = new mongoose.Schema(
     ],
 
     cancelled_reason: { type: String },
+    created_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    updated_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true },
 );

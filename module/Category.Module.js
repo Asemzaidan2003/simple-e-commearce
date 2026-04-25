@@ -30,7 +30,15 @@ const categorySchema = new mongoose.Schema(
     is_deleted:{
       type: Boolean,
       default: false,  
-    }
+    },
+    creared_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    updated_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true },
 );

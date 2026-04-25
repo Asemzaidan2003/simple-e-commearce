@@ -37,7 +37,7 @@ router.get(
 router.get(
   "/store/:store_id/active_categories",
   verifyToken,
-  allowRoles("store", "admin"),
+  allowRoles("store", "admin" ,"customer"),
   getActiveCategories,
 );
 
@@ -53,8 +53,8 @@ router.get(
  */
 router.get("/:id", verifyToken, allowRoles("admin", "store"), getCategoryById);
 
-router.put("/:id", verifyToken, allowRoles("admin"), updateCategory);
+router.put("/:id", verifyToken, allowRoles("admin" , "store"), updateCategory);
 
-router.delete("/:id", verifyToken, allowRoles("admin"), deleteCategory);
+router.put("/:id", verifyToken, allowRoles("admin","store"), deleteCategory);
 
 export default router;
