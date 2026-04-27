@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
-
+import cookieParser from "cookie-parser";
 import authRoutes     from "./routes/Auth.Routes.js";
 import categoryRoutes from "./routes/Category.Routs.js";
 import productRoutes  from "./routes/Product.Routes.js";
@@ -10,6 +10,7 @@ import discountRoutes from "./routes/Discount.Routes.js";
 import storeRoutes    from "./routes/Store.Routes.js";
 import userRoutes     from "./routes/User.Routes.js";
 import countryRoutes  from "./routes/Country.Routes.js";
+import cors from "cors";
 
 dotenv.config();
 
@@ -17,7 +18,13 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
-
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: process.env.Front_End_URL, // أو الدومين تبع frontend
+    credentials: true,
+  }),
+);
 app.use("/api/auth",     authRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/product",  productRoutes);

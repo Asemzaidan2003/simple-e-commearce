@@ -42,29 +42,31 @@ export const registerUser = async (req, res) => {
       updated_by,
     } = req.body;
 
-    if (!user_name || !user_email || !user_password || !user_country || !user_city || !user_role || !createdVia) {
+    if (
+      !user_name ||
+      !user_email ||
+      !user_password ||
+      !user_country ||
+      !user_city ||
+      !user_role ||
+      !createdVia
+    ) {
       return sendError(res, 400, "Required fields are missing");
-      //return res.status(400).json({ success: false, message: "Name, email, and password are required" });
     }
 
     if (user_password.length < 8) {
       return sendError(res, 400, "Password must be at least 8 characters");
-      //return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
     }
 
-    const existingUser = await User.findOne({ user_email: user_email.toLowerCase() });
+    const existingUser = await User.findOne({
+      user_email: user_email.toLowerCase(),
+    });
     if (existingUser) {
       return sendError(res, 409, "User is already registered");
-      // return res.status(409).json({ success: false, message: "Email already registered" });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(user_password, salt);
-    if (createdVia === "admin" ) {
-      created_by = req.user.id; // Set created_by to the admin's user ID
-      updated_by = req.user.id; // Set updated_by to the admin's user ID
-    }
-    // Generate tokens before saving so we can store the refresh token
+    const hashedPassword = await bcrypt.hash(user_password, 10);
+
     const userDoc = new User({
       user_name,
       user_email: user_email.toLowerCase(),
@@ -79,31 +81,44 @@ export const registerUser = async (req, res) => {
       updated_by,
     });
 
-    const accessToken  = generateAccessToken(userDoc);
+    const accessToken = generateAccessToken(userDoc);
     const refreshToken = generateRefreshToken(userDoc);
 
     userDoc.refresh_token = refreshToken;
-    userDoc.refresh_token_expires_at = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+    userDoc.refresh_token_expires_at = new Date(
+      Date.now() + REFRESH_TOKEN_TTL_MS,
+    );
 
     await userDoc.save();
 
-    // Send welcome email (non-blocking — don't fail registration if email fails)
-    sendWelcomeEmail(userDoc).catch((err) => console.error("Welcome email failed:", err));
+    res.cookie("access_token", accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refresh_token", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: REFRESH_TOKEN_TTL_MS,
+    });
+
+    sendWelcomeEmail(userDoc).catch(console.error);
 
     res.status(201).json({
       success: true,
       message: "Registered successfully",
-      access_token: accessToken,
-      refresh_token: refreshToken,
       user: {
-        id:    userDoc._id,
-        name:  userDoc.user_name_en,
+        id: userDoc._id,
+        name: userDoc.user_name,
         email: userDoc.user_email,
-        role:  userDoc.user_role,
+        role: userDoc.user_role,
       },
     });
   } catch (error) {
-    console.error("Register error:", error);
+    console.error(error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -113,101 +128,113 @@ export const login = async (req, res) => {
     const { user_email, user_password } = req.body;
 
     if (!user_email || !user_password) {
-      return res.status(400).json({ success: false, message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
     const user = await User.findOne({ user_email: user_email.toLowerCase() });
-    if (!user) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
-    }
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
     const isMatch = await bcrypt.compare(user_password, user.user_password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
-    }
+    if (!isMatch)
+      return res.status(401).json({ message: "Invalid credentials" });
 
-    const accessToken  = generateAccessToken(user);
+    const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // Save refresh token and reset its expiry (sliding window)
-    user.refresh_token            = refreshToken;
+    user.refresh_token = refreshToken;
     user.refresh_token_expires_at = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
     await user.save();
+
+    // 🔥 cookies
+    res.cookie("access_token", accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refresh_token", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: REFRESH_TOKEN_TTL_MS,
+    });
 
     res.status(200).json({
       success: true,
       message: "Login successful",
-      access_token: accessToken,
-      refresh_token: refreshToken,
       user: {
-        id:    user._id,
-        name:  user.user_name_en,
+        id: user._id,
+        name: user.user_name,
         email: user.user_email,
-        role:  user.user_role,
+        role: user.user_role,
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
 export const refresh = async (req, res) => {
   try {
-    const { refresh_token } = req.body;
+    const refreshToken = req.cookies?.refresh_token;
 
-    if (!refresh_token) {
-      return res.status(401).json({ success: false, message: "Refresh token is required" });
+    if (!refreshToken) {
+      return res.status(401).json({ message: "No refresh token" });
     }
 
-    // Verify the refresh token signature
     let decoded;
     try {
-      decoded = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET);
-    } catch (err) {
-      return res.status(401).json({ success: false, message: "Invalid or expired refresh token — please log in again" });
+      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    } catch {
+      return res.status(401).json({ message: "Invalid refresh token" });
     }
 
-    // Make sure this refresh token is the one we issued (not a stolen old one)
     const user = await User.findById(decoded.id);
-    if (!user || user.refresh_token !== refresh_token) {
-      return res.status(401).json({ success: false, message: "Refresh token is no longer valid — please log in again" });
+
+    if (!user || user.refresh_token !== refreshToken) {
+      return res.status(401).json({ message: "Refresh token invalid" });
     }
 
-    // Check DB-level expiry as a second layer
-    if (!user.refresh_token_expires_at || new Date() > user.refresh_token_expires_at) {
-      return res.status(401).json({ success: false, message: "Session expired — please log in again" });
+    if (new Date() > user.refresh_token_expires_at) {
+      return res.status(401).json({ message: "Session expired" });
     }
 
-    // Issue a new access token
     const newAccessToken = generateAccessToken(user);
 
-    // Slide the refresh token expiry window — user stays logged in as long as they're active
+    res.cookie("access_token", newAccessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
     user.refresh_token_expires_at = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
     await user.save();
 
-    res.status(200).json({
-      success: true,
-      access_token: newAccessToken,
-      refresh_token, // same refresh token, expiry just got reset
-    });
+    res.json({ success: true, message: "Token refreshed" });
   } catch (error) {
-    console.error("Refresh error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    console.error(error);
+    res.status(500).json({ message: "Internal error" });
   }
 };
 
 export const logout = async (req, res) => {
   try {
-    // Invalidate the refresh token in DB — token is dead even if someone stole it
     await User.findByIdAndUpdate(req.user.id, {
-      refresh_token:            null,
+      refresh_token: null,
       refresh_token_expires_at: null,
     });
 
-    res.status(200).json({ success: true, message: "Logged out successfully" });
+    res.clearCookie("access_token");
+    res.clearCookie("refresh_token");
+
+    res.json({ success: true, message: "Logged out" });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({ message: "Internal error" });
   }
 };
 
